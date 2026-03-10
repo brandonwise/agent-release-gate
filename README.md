@@ -64,10 +64,10 @@ cases:
 
 ## Repo layout
 
-- `src/agent_release_gate/` — scoring + gate logic
-- `examples/` — runnable demo spec and results
-- `tests/` — unit tests
-- `.github/workflows/ci.yml` — CI example
+- `src/agent_release_gate/`: scoring + gate logic
+- `examples/`: runnable demo spec and results
+- `tests/`: unit tests
+- `.github/workflows/ci.yml`: CI example
 
 ## Development
 
