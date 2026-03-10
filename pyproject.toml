@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-release-gate"
+version = "0.1.0"
+description = "CI gate for AI agent quality: evaluate outputs, detect regressions, and fail fast."
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = ["PyYAML>=6.0"]
+
+[project.scripts]
+argate = "agent_release_gate.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+addopts = "-q"

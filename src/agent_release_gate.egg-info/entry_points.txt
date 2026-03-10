@@ -1,0 +1,2 @@
+[console_scripts]
+argate = agent_release_gate.cli:main

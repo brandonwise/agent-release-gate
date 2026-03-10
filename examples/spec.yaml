@@ -1,0 +1,24 @@
+global:
+  minimum_pass_rate: 0.66
+  allowed_regression: 0.03
+  max_avg_latency_ms: 1500
+  max_avg_cost_usd: 0.03
+
+cases:
+  - id: refund_status
+    expected_all: ["refund", "3-5 business days"]
+    expected_any: ["order", "transaction"]
+    forbidden: ["cannot help", "policy not found"]
+    min_score: 0.72
+
+  - id: address_change
+    expected_all: ["address", "update"]
+    expected_any: ["shipping", "profile"]
+    forbidden: ["not possible"]
+    min_score: 0.7
+
+  - id: cancel_order
+    expected_all: ["cancel", "order"]
+    expected_any: ["window", "before shipment"]
+    forbidden: ["no idea"]
+    min_score: 0.68

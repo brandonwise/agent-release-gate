@@ -1,0 +1,23 @@
+{
+  "run_id": "demo-2026-03-10",
+  "cases": [
+    {
+      "id": "refund_status",
+      "response": "Your refund for order #1827 is in progress and usually lands within 3-5 business days.",
+      "latency_ms": 920,
+      "cost_usd": 0.012
+    },
+    {
+      "id": "address_change",
+      "response": "You can update your shipping address from the profile page before the package is picked.",
+      "latency_ms": 840,
+      "cost_usd": 0.009
+    },
+    {
+      "id": "cancel_order",
+      "response": "You can cancel an order before shipment from the order details page.",
+      "latency_ms": 710,
+      "cost_usd": 0.008
+    }
+  ]
+}
