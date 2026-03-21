@@ -20,6 +20,7 @@ This tool makes those problems visible before release.
 - Calculates pass rate, average latency, and average cost
 - Fails if quality drops below your threshold
 - Optionally compares against a baseline report and blocks regressions
+- Supports per-case latency/cost limits to catch outliers hidden by averages
 - Outputs both JSON (for machines) and Markdown (for humans)
 
 ## Install
@@ -60,7 +61,11 @@ cases:
     expected_any: ["order", "transaction"]
     forbidden: ["cannot help", "policy not found"]
     min_score: 0.72
+    max_latency_ms: 1200
+    max_cost_usd: 0.02
 ```
+
+`max_latency_ms` and `max_cost_usd` are optional per-case guardrails. If set, that case fails when telemetry is missing or exceeds the limit.
 
 ## Repo layout
 
