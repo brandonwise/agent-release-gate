@@ -70,6 +70,26 @@ def score_case(case: GateCase, result: CaseResult) -> ScoredCase:
     score = max(0.0, min(score, 1.0))
     passed = score >= case.min_score and forbidden_hits == 0
 
+    if case.max_latency_ms is not None:
+        if result.latency_ms is None:
+            passed = False
+            notes.append("Missing latency_ms for case with max_latency_ms set")
+        elif result.latency_ms > case.max_latency_ms:
+            passed = False
+            notes.append(
+                f"Latency {result.latency_ms}ms exceeds case max {case.max_latency_ms}ms"
+            )
+
+    if case.max_cost_usd is not None:
+        if result.cost_usd is None:
+            passed = False
+            notes.append("Missing cost_usd for case with max_cost_usd set")
+        elif result.cost_usd > case.max_cost_usd:
+            passed = False
+            notes.append(
+                f"Cost ${result.cost_usd:.6f} exceeds case max ${case.max_cost_usd:.6f}"
+            )
+
     if passed and not notes:
         notes.append("Looks good")
 

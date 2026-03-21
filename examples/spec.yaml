@@ -10,6 +10,8 @@ cases:
     expected_any: ["order", "transaction"]
     forbidden: ["cannot help", "policy not found"]
     min_score: 0.72
+    max_latency_ms: 1200
+    max_cost_usd: 0.02
 
   - id: address_change
     expected_all: ["address", "update"]

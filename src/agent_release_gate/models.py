@@ -11,6 +11,8 @@ class GateCase:
     expected_any: list[str] = field(default_factory=list)
     forbidden: list[str] = field(default_factory=list)
     min_score: float = 0.7
+    max_latency_ms: Optional[int] = None
+    max_cost_usd: Optional[float] = None
 
 
 @dataclass
@@ -73,6 +75,12 @@ def parse_spec(data: dict[str, Any]) -> GateSpec:
             expected_any=_as_list(c.get("expected_any")),
             forbidden=_as_list(c.get("forbidden")),
             min_score=float(c.get("min_score", 0.7)),
+            max_latency_ms=(
+                int(c["max_latency_ms"]) if c.get("max_latency_ms") is not None else None
+            ),
+            max_cost_usd=(
+                float(c["max_cost_usd"]) if c.get("max_cost_usd") is not None else None
+            ),
         )
         for c in raw_cases
     ]

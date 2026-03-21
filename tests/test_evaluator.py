@@ -69,3 +69,81 @@ cases:
     report = evaluate(spec, results, baseline)
     assert report.summary.gate_passed is False
     assert any("Regression detected" in r for r in report.summary.gate_reasons)
+
+
+def test_case_limits_fail_on_latency_and_cost_outliers(tmp_path: Path):
+    spec = tmp_path / "spec.yaml"
+    spec.write_text(
+        """
+global:
+  minimum_pass_rate: 1.0
+cases:
+  - id: case_1
+    expected_all: ["refund"]
+    min_score: 0.7
+    max_latency_ms: 1200
+    max_cost_usd: 0.02
+""".strip(),
+        encoding="utf-8",
+    )
+
+    results = tmp_path / "results.json"
+    results.write_text(
+        """
+{
+  "cases": [
+    {
+      "id": "case_1",
+      "response": "refund confirmed",
+      "latency_ms": 1900,
+      "cost_usd": 0.031
+    }
+  ]
+}
+""".strip(),
+        encoding="utf-8",
+    )
+
+    report = evaluate(spec, results)
+    assert report.summary.gate_passed is False
+    assert report.cases[0].passed is False
+    assert any("Latency 1900ms exceeds case max 1200ms" in n for n in report.cases[0].notes)
+    assert any("Cost $0.031000 exceeds case max $0.020000" in n for n in report.cases[0].notes)
+
+
+def test_case_limits_require_telemetry_when_configured(tmp_path: Path):
+    spec = tmp_path / "spec.yaml"
+    spec.write_text(
+        """
+global:
+  minimum_pass_rate: 1.0
+cases:
+  - id: case_1
+    expected_all: ["refund"]
+    min_score: 0.7
+    max_latency_ms: 1200
+    max_cost_usd: 0.02
+""".strip(),
+        encoding="utf-8",
+    )
+
+    results = tmp_path / "results.json"
+    results.write_text(
+        """
+{
+  "cases": [
+    {
+      "id": "case_1",
+      "response": "refund confirmed"
+    }
+  ]
+}
+""".strip(),
+        encoding="utf-8",
+    )
+
+    report = evaluate(spec, results)
+    assert report.summary.gate_passed is False
+    assert report.cases[0].passed is False
+    assert "Missing latency_ms for case with max_latency_ms set" in report.cases[0].notes
+    assert "Missing cost_usd for case with max_cost_usd set" in report.cases[0].notes
