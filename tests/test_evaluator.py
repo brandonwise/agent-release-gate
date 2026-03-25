@@ -147,3 +147,61 @@ cases:
     assert report.cases[0].passed is False
     assert "Missing latency_ms for case with max_latency_ms set" in report.cases[0].notes
     assert "Missing cost_usd for case with max_cost_usd set" in report.cases[0].notes
+
+
+def test_global_latency_limit_requires_telemetry_when_configured(tmp_path: Path):
+    spec = tmp_path / "spec.yaml"
+    spec.write_text(
+        """
+global:
+  minimum_pass_rate: 1.0
+  max_avg_latency_ms: 1000
+cases:
+  - id: case_1
+    expected_all: ["refund"]
+    min_score: 0.7
+""".strip(),
+        encoding="utf-8",
+    )
+
+    results = tmp_path / "results.json"
+    results.write_text(
+        '{"cases":[{"id":"case_1","response":"refund confirmed"}]}',
+        encoding="utf-8",
+    )
+
+    report = evaluate(spec, results)
+    assert report.summary.gate_passed is False
+    assert any(
+        "Average latency limit is configured, but no latency telemetry was provided" in r
+        for r in report.summary.gate_reasons
+    )
+
+
+def test_global_cost_limit_requires_telemetry_when_configured(tmp_path: Path):
+    spec = tmp_path / "spec.yaml"
+    spec.write_text(
+        """
+global:
+  minimum_pass_rate: 1.0
+  max_avg_cost_usd: 0.01
+cases:
+  - id: case_1
+    expected_all: ["refund"]
+    min_score: 0.7
+""".strip(),
+        encoding="utf-8",
+    )
+
+    results = tmp_path / "results.json"
+    results.write_text(
+        '{"cases":[{"id":"case_1","response":"refund confirmed"}]}',
+        encoding="utf-8",
+    )
+
+    report = evaluate(spec, results)
+    assert report.summary.gate_passed is False
+    assert any(
+        "Average cost limit is configured, but no cost telemetry was provided" in r
+        for r in report.summary.gate_reasons
+    )

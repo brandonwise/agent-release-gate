@@ -138,17 +138,29 @@ def evaluate(
             f"Pass rate {pass_rate:.2%} is below minimum {spec.minimum_pass_rate:.2%}"
         )
 
-    if spec.max_avg_latency_ms is not None and avg_latency is not None and avg_latency > spec.max_avg_latency_ms:
-        gate_passed = False
-        reasons.append(
-            f"Average latency {avg_latency:.1f}ms exceeds limit {spec.max_avg_latency_ms}ms"
-        )
+    if spec.max_avg_latency_ms is not None:
+        if avg_latency is None:
+            gate_passed = False
+            reasons.append(
+                "Average latency limit is configured, but no latency telemetry was provided"
+            )
+        elif avg_latency > spec.max_avg_latency_ms:
+            gate_passed = False
+            reasons.append(
+                f"Average latency {avg_latency:.1f}ms exceeds limit {spec.max_avg_latency_ms}ms"
+            )
 
-    if spec.max_avg_cost_usd is not None and avg_cost is not None and avg_cost > spec.max_avg_cost_usd:
-        gate_passed = False
-        reasons.append(
-            f"Average cost ${avg_cost:.4f} exceeds limit ${spec.max_avg_cost_usd:.4f}"
-        )
+    if spec.max_avg_cost_usd is not None:
+        if avg_cost is None:
+            gate_passed = False
+            reasons.append(
+                "Average cost limit is configured, but no cost telemetry was provided"
+            )
+        elif avg_cost > spec.max_avg_cost_usd:
+            gate_passed = False
+            reasons.append(
+                f"Average cost ${avg_cost:.4f} exceeds limit ${spec.max_avg_cost_usd:.4f}"
+            )
 
     if baseline_path:
         baseline = load_json(baseline_path)

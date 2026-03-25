@@ -21,6 +21,7 @@ This tool makes those problems visible before release.
 - Fails if quality drops below your threshold
 - Optionally compares against a baseline report and blocks regressions
 - Supports per-case latency/cost limits to catch outliers hidden by averages
+- Enforces telemetry presence when global average latency/cost limits are configured
 - Outputs both JSON (for machines) and Markdown (for humans)
 
 ## Install
@@ -66,6 +67,8 @@ cases:
 ```
 
 `max_latency_ms` and `max_cost_usd` are optional per-case guardrails. If set, that case fails when telemetry is missing or exceeds the limit.
+
+When `max_avg_latency_ms` or `max_avg_cost_usd` is configured globally, the gate also fails if the corresponding telemetry is missing across the run.
 
 ## Repo layout
 
