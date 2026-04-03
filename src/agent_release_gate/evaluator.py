@@ -164,12 +164,61 @@ def evaluate(
 
     if baseline_path:
         baseline = load_json(baseline_path)
-        baseline_pass_rate = float(baseline.get("summary", {}).get("pass_rate", 0.0))
+        baseline_summary = baseline.get("summary", {}) or {}
+        baseline_pass_rate = float(baseline_summary.get("pass_rate", 0.0))
         if pass_rate < (baseline_pass_rate - spec.allowed_regression):
             gate_passed = False
             reasons.append(
                 f"Regression detected: current {pass_rate:.2%}, baseline {baseline_pass_rate:.2%}, allowed drop {spec.allowed_regression:.2%}"
             )
+
+        if spec.max_avg_latency_regression_pct is not None:
+            baseline_latency = baseline_summary.get("avg_latency_ms")
+            if baseline_latency is None or avg_latency is None:
+                gate_passed = False
+                reasons.append(
+                    "Latency regression limit is configured, but baseline or current average latency telemetry is missing"
+                )
+            else:
+                baseline_latency_f = float(baseline_latency)
+                if baseline_latency_f <= 0:
+                    gate_passed = False
+                    reasons.append(
+                        "Latency regression limit is configured, but baseline avg_latency_ms must be > 0"
+                    )
+                else:
+                    latency_increase_pct = (avg_latency - baseline_latency_f) / baseline_latency_f
+                    if latency_increase_pct > spec.max_avg_latency_regression_pct:
+                        gate_passed = False
+                        reasons.append(
+                            "Latency regression detected: "
+                            f"current {avg_latency:.1f}ms vs baseline {baseline_latency_f:.1f}ms "
+                            f"({latency_increase_pct:.2%} increase, allowed {spec.max_avg_latency_regression_pct:.2%})"
+                        )
+
+        if spec.max_avg_cost_regression_pct is not None:
+            baseline_cost = baseline_summary.get("avg_cost_usd")
+            if baseline_cost is None or avg_cost is None:
+                gate_passed = False
+                reasons.append(
+                    "Cost regression limit is configured, but baseline or current average cost telemetry is missing"
+                )
+            else:
+                baseline_cost_f = float(baseline_cost)
+                if baseline_cost_f <= 0:
+                    gate_passed = False
+                    reasons.append(
+                        "Cost regression limit is configured, but baseline avg_cost_usd must be > 0"
+                    )
+                else:
+                    cost_increase_pct = (avg_cost - baseline_cost_f) / baseline_cost_f
+                    if cost_increase_pct > spec.max_avg_cost_regression_pct:
+                        gate_passed = False
+                        reasons.append(
+                            "Cost regression detected: "
+                            f"current ${avg_cost:.6f} vs baseline ${baseline_cost_f:.6f} "
+                            f"({cost_increase_pct:.2%} increase, allowed {spec.max_avg_cost_regression_pct:.2%})"
+                        )
 
     if gate_passed:
         reasons.append("Gate passed")

@@ -21,6 +21,8 @@ class GateSpec:
     allowed_regression: float = 0.02
     max_avg_latency_ms: Optional[int] = None
     max_avg_cost_usd: Optional[float] = None
+    max_avg_latency_regression_pct: Optional[float] = None
+    max_avg_cost_regression_pct: Optional[float] = None
     cases: list[GateCase] = field(default_factory=list)
 
 
@@ -96,6 +98,16 @@ def parse_spec(data: dict[str, Any]) -> GateSpec:
         max_avg_cost_usd=(
             float(global_cfg["max_avg_cost_usd"])
             if global_cfg.get("max_avg_cost_usd") is not None
+            else None
+        ),
+        max_avg_latency_regression_pct=(
+            float(global_cfg["max_avg_latency_regression_pct"])
+            if global_cfg.get("max_avg_latency_regression_pct") is not None
+            else None
+        ),
+        max_avg_cost_regression_pct=(
+            float(global_cfg["max_avg_cost_regression_pct"])
+            if global_cfg.get("max_avg_cost_regression_pct") is not None
             else None
         ),
         cases=cases,
