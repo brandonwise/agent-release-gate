@@ -21,6 +21,7 @@ This tool makes those problems visible before release.
 - Fails if quality drops below your threshold
 - Optionally compares against a baseline report and blocks regressions
 - Optionally enforces baseline latency/cost drift caps so slower or pricier runs fail fast
+- Optionally records run summaries and detects sustained pass-rate drift across releases
 - Supports per-case latency/cost limits to catch outliers hidden by averages
 - Enforces telemetry presence when global average latency/cost limits are configured
 - Outputs both JSON (for machines) and Markdown (for humans)
@@ -47,6 +48,24 @@ The command exits with:
 - `1` when the gate fails
 
 Perfect for CI pipelines.
+
+## Track trend drift across runs
+
+Single-baseline checks catch point-in-time regressions. Trend analysis catches slow degradation over many runs.
+
+```bash
+# Record this run in a history folder
+argate evaluate \
+  --spec examples/spec.yaml \
+  --results examples/results.json \
+  --record-history .gate-history
+
+# Analyze the latest 10 runs and print trend JSON
+argate trend --history .gate-history --window 10
+
+# CI mode: fail when pass-rate trend is declining
+argate trend --history .gate-history --fail-on-regression
+```
 
 ## Spec format
 

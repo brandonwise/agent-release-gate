@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import List, Optional
 
 from .evaluator import evaluate, to_dict, to_markdown
+from .history import analyze_history, record_history, trend_to_dict
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -19,6 +20,20 @@ def build_parser() -> argparse.ArgumentParser:
     eval_cmd.add_argument("--baseline", help="Optional baseline report JSON")
     eval_cmd.add_argument("--output", help="Write report JSON to this path")
     eval_cmd.add_argument("--markdown", help="Write markdown report to this path")
+    eval_cmd.add_argument(
+        "--record-history",
+        help="Optional directory to append run summaries for cross-run trend analysis",
+    )
+
+    trend_cmd = sub.add_parser("trend", help="Analyze pass-rate trend across historical run summaries")
+    trend_cmd.add_argument("--history", required=True, help="Directory containing historical run JSON")
+    trend_cmd.add_argument("--window", type=int, default=10, help="Number of most recent runs to analyze")
+    trend_cmd.add_argument("--output", help="Write trend report JSON to this path")
+    trend_cmd.add_argument(
+        "--fail-on-regression",
+        action="store_true",
+        help="Exit non-zero when the trend direction is declining",
+    )
 
     return parser
 
@@ -39,7 +54,24 @@ def main(argv: Optional[List[str]] = None) -> int:
         if args.markdown:
             Path(args.markdown).write_text(to_markdown(report), encoding="utf-8")
 
+        if args.record_history:
+            record_history(report, history_dir=args.record_history)
+
         return 0 if report.summary.gate_passed else 1
+
+    if args.command == "trend":
+        trend_report = analyze_history(history_dir=args.history, window=args.window)
+        payload = trend_to_dict(trend_report)
+
+        print(json.dumps(payload, indent=2))
+
+        if args.output:
+            Path(args.output).write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+        if args.fail_on_regression and trend_report.any_regression:
+            return 1
+
+        return 0
 
     parser.print_help()
     return 2
