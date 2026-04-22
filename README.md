@@ -18,9 +18,11 @@ This tool makes those problems visible before release.
 
 - Scores each test case using expected + forbidden phrases
 - Calculates pass rate, average latency, and average cost
+- Calculates pass rate, average latency, and p95 latency (tail behavior)
 - Fails if quality drops below your threshold
 - Optionally compares against a baseline report and blocks regressions
 - Optionally enforces baseline latency/cost drift caps so slower or pricier runs fail fast
+- Optionally enforces a global p95 latency limit to catch long-tail slow responses
 - Optionally records run summaries and detects sustained pass-rate drift across releases
 - Supports per-case latency/cost limits to catch outliers hidden by averages
 - Enforces telemetry presence when global average latency/cost limits are configured
@@ -74,6 +76,7 @@ global:
   minimum_pass_rate: 0.8
   allowed_regression: 0.02
   max_avg_latency_ms: 1500
+  max_p95_latency_ms: 2000
   max_avg_cost_usd: 0.03
   max_avg_latency_regression_pct: 0.15
   max_avg_cost_regression_pct: 0.10
@@ -91,6 +94,8 @@ cases:
 `max_latency_ms` and `max_cost_usd` are optional per-case guardrails. If set, that case fails when telemetry is missing or exceeds the limit.
 
 When `max_avg_latency_ms` or `max_avg_cost_usd` is configured globally, the gate also fails if the corresponding telemetry is missing across the run.
+
+When `max_p95_latency_ms` is configured globally, the gate fails if p95 latency is above the threshold or latency telemetry is missing.
 
 When `--baseline` is provided, you can also set `max_avg_latency_regression_pct` and/or `max_avg_cost_regression_pct` to fail if average latency or cost regresses beyond the allowed percentage increase vs baseline.
 

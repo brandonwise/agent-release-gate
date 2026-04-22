@@ -20,6 +20,7 @@ class GateSpec:
     minimum_pass_rate: float = 0.8
     allowed_regression: float = 0.02
     max_avg_latency_ms: Optional[int] = None
+    max_p95_latency_ms: Optional[int] = None
     max_avg_cost_usd: Optional[float] = None
     max_avg_latency_regression_pct: Optional[float] = None
     max_avg_cost_regression_pct: Optional[float] = None
@@ -51,6 +52,7 @@ class GateSummary:
     avg_cost_usd: Optional[float]
     gate_passed: bool
     gate_reasons: list[str]
+    p95_latency_ms: Optional[float] = None
 
 
 @dataclass
@@ -93,6 +95,11 @@ def parse_spec(data: dict[str, Any]) -> GateSpec:
         max_avg_latency_ms=(
             int(global_cfg["max_avg_latency_ms"])
             if global_cfg.get("max_avg_latency_ms") is not None
+            else None
+        ),
+        max_p95_latency_ms=(
+            int(global_cfg["max_p95_latency_ms"])
+            if global_cfg.get("max_p95_latency_ms") is not None
             else None
         ),
         max_avg_cost_usd=(

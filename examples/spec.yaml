@@ -2,6 +2,7 @@ global:
   minimum_pass_rate: 0.66
   allowed_regression: 0.03
   max_avg_latency_ms: 1500
+  max_p95_latency_ms: 1800
   max_avg_cost_usd: 0.03
   max_avg_latency_regression_pct: 0.15
   max_avg_cost_regression_pct: 0.1

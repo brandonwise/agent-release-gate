@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 from typing import Optional, Union
 
@@ -29,6 +30,15 @@ def load_json(path: Union[str, Path]) -> dict:
 
 def normalize(text: str) -> str:
     return " ".join(text.lower().split())
+
+
+def percentile(values: list[float], pct: float) -> Optional[float]:
+    if not values:
+        return None
+
+    sorted_values = sorted(values)
+    rank = max(0, math.ceil(pct * len(sorted_values)) - 1)
+    return float(sorted_values[rank])
 
 
 def score_case(case: GateCase, result: CaseResult) -> ScoredCase:
@@ -127,6 +137,7 @@ def evaluate(
     latencies = [r.latency_ms for r in results if r.latency_ms is not None]
     costs = [r.cost_usd for r in results if r.cost_usd is not None]
     avg_latency = (sum(latencies) / len(latencies)) if latencies else None
+    p95_latency = percentile([float(v) for v in latencies], 0.95)
     avg_cost = (sum(costs) / len(costs)) if costs else None
 
     reasons: list[str] = []
@@ -148,6 +159,18 @@ def evaluate(
             gate_passed = False
             reasons.append(
                 f"Average latency {avg_latency:.1f}ms exceeds limit {spec.max_avg_latency_ms}ms"
+            )
+
+    if spec.max_p95_latency_ms is not None:
+        if p95_latency is None:
+            gate_passed = False
+            reasons.append(
+                "P95 latency limit is configured, but no latency telemetry was provided"
+            )
+        elif p95_latency > spec.max_p95_latency_ms:
+            gate_passed = False
+            reasons.append(
+                f"P95 latency {p95_latency:.1f}ms exceeds limit {spec.max_p95_latency_ms}ms"
             )
 
     if spec.max_avg_cost_usd is not None:
@@ -231,6 +254,7 @@ def evaluate(
         avg_cost_usd=round(avg_cost, 6) if avg_cost is not None else None,
         gate_passed=gate_passed,
         gate_reasons=reasons,
+        p95_latency_ms=round(p95_latency, 2) if p95_latency is not None else None,
     )
 
     return GateReport(summary=summary, cases=scored)
@@ -244,6 +268,7 @@ def to_dict(report: GateReport) -> dict:
             "pass_rate": report.summary.pass_rate,
             "avg_latency_ms": report.summary.avg_latency_ms,
             "avg_cost_usd": report.summary.avg_cost_usd,
+            "p95_latency_ms": report.summary.p95_latency_ms,
             "gate_passed": report.summary.gate_passed,
             "gate_reasons": report.summary.gate_reasons,
         },
@@ -264,6 +289,8 @@ def to_markdown(report: GateReport) -> str:
     ]
     if s.avg_latency_ms is not None:
         lines.append(f"- Avg latency: {s.avg_latency_ms:.2f}ms")
+    if s.p95_latency_ms is not None:
+        lines.append(f"- P95 latency: {s.p95_latency_ms:.2f}ms")
     if s.avg_cost_usd is not None:
         lines.append(f"- Avg cost: ${s.avg_cost_usd:.6f}")
 
