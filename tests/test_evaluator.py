@@ -39,6 +39,7 @@ cases:
     report = evaluate(spec, results)
     assert report.summary.gate_passed is True
     assert report.summary.pass_rate == 1.0
+    assert report.summary.p95_latency_ms == 800.0
     assert report.cases[0].passed is True
 
 
@@ -174,6 +175,104 @@ cases:
     assert report.summary.gate_passed is False
     assert any(
         "Average latency limit is configured, but no latency telemetry was provided" in r
+        for r in report.summary.gate_reasons
+    )
+
+
+def test_global_p95_latency_limit_blocks_tail_latency(tmp_path: Path):
+    spec = tmp_path / "spec.yaml"
+    spec.write_text(
+        """
+global:
+  minimum_pass_rate: 1.0
+  max_p95_latency_ms: 1000
+cases:
+  - id: case_1
+    expected_all: ["ok"]
+    min_score: 0.7
+  - id: case_2
+    expected_all: ["ok"]
+    min_score: 0.7
+  - id: case_3
+    expected_all: ["ok"]
+    min_score: 0.7
+  - id: case_4
+    expected_all: ["ok"]
+    min_score: 0.7
+  - id: case_5
+    expected_all: ["ok"]
+    min_score: 0.7
+  - id: case_6
+    expected_all: ["ok"]
+    min_score: 0.7
+  - id: case_7
+    expected_all: ["ok"]
+    min_score: 0.7
+  - id: case_8
+    expected_all: ["ok"]
+    min_score: 0.7
+  - id: case_9
+    expected_all: ["ok"]
+    min_score: 0.7
+  - id: case_10
+    expected_all: ["ok"]
+    min_score: 0.7
+""".strip(),
+        encoding="utf-8",
+    )
+
+    results = tmp_path / "results.json"
+    results.write_text(
+        """
+{
+  "cases": [
+    {"id": "case_1", "response": "ok", "latency_ms": 500},
+    {"id": "case_2", "response": "ok", "latency_ms": 500},
+    {"id": "case_3", "response": "ok", "latency_ms": 500},
+    {"id": "case_4", "response": "ok", "latency_ms": 500},
+    {"id": "case_5", "response": "ok", "latency_ms": 500},
+    {"id": "case_6", "response": "ok", "latency_ms": 500},
+    {"id": "case_7", "response": "ok", "latency_ms": 500},
+    {"id": "case_8", "response": "ok", "latency_ms": 500},
+    {"id": "case_9", "response": "ok", "latency_ms": 500},
+    {"id": "case_10", "response": "ok", "latency_ms": 2500}
+  ]
+}
+""".strip(),
+        encoding="utf-8",
+    )
+
+    report = evaluate(spec, results)
+    assert report.summary.gate_passed is False
+    assert report.summary.p95_latency_ms == 2500.0
+    assert any("P95 latency 2500.0ms exceeds limit 1000ms" in r for r in report.summary.gate_reasons)
+
+
+def test_global_p95_latency_limit_requires_telemetry_when_configured(tmp_path: Path):
+    spec = tmp_path / "spec.yaml"
+    spec.write_text(
+        """
+global:
+  minimum_pass_rate: 1.0
+  max_p95_latency_ms: 1000
+cases:
+  - id: case_1
+    expected_all: ["refund"]
+    min_score: 0.7
+""".strip(),
+        encoding="utf-8",
+    )
+
+    results = tmp_path / "results.json"
+    results.write_text(
+        '{"cases":[{"id":"case_1","response":"refund confirmed"}]}',
+        encoding="utf-8",
+    )
+
+    report = evaluate(spec, results)
+    assert report.summary.gate_passed is False
+    assert any(
+        "P95 latency limit is configured, but no latency telemetry was provided" in r
         for r in report.summary.gate_reasons
     )
 
