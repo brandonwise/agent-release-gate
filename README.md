@@ -17,13 +17,12 @@ This tool makes those problems visible before release.
 ## What it does
 
 - Scores each test case using expected + forbidden phrases
-- Calculates pass rate, average latency, and average cost
-- Calculates pass rate, average latency, and p95 latency (tail behavior)
+- Calculates pass rate, average latency, p95 latency, and average cost
 - Fails if quality drops below your threshold
 - Optionally compares against a baseline report and blocks regressions
 - Optionally enforces baseline latency/cost drift caps so slower or pricier runs fail fast
 - Optionally enforces a global p95 latency limit to catch long-tail slow responses
-- Optionally records run summaries and detects sustained pass-rate drift across releases
+- Optionally records run summaries and detects cross-run pass-rate, latency, p95 latency, and cost drift across releases
 - Supports per-case latency/cost limits to catch outliers hidden by averages
 - Enforces telemetry presence when global average latency/cost limits are configured
 - Outputs both JSON (for machines) and Markdown (for humans)
@@ -67,7 +66,25 @@ argate trend --history .gate-history --window 10
 
 # CI mode: fail when pass-rate trend is declining
 argate trend --history .gate-history --fail-on-regression
+
+# Optional CI mode: fail when average latency, p95 latency, or cost is trending up
+argate trend --history .gate-history --fail-on-latency-regression
+argate trend --history .gate-history --fail-on-p95-regression
+argate trend --history .gate-history --fail-on-cost-regression
+
+# Fail on any tracked regression across pass rate, latency, p95 latency, or cost
+argate trend --history .gate-history --fail-on-any-regression
 ```
+
+`argate evaluate --record-history ...` stores pass rate, average latency, p95 latency, and average cost in each history file when that telemetry is available in the evaluation report.
+
+`argate trend` keeps the existing pass-rate output and now also includes slope, direction, and regression booleans for:
+
+- `avg_latency_ms`
+- `p95_latency_ms`
+- `avg_cost_usd`
+
+Older history files that predate these metrics are still supported. When there are fewer than three runs with a given metric inside the analysis window, that metric reports `insufficient_data` instead of forcing a regression.
 
 ## Spec format
 

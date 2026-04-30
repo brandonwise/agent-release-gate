@@ -25,14 +25,37 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional directory to append run summaries for cross-run trend analysis",
     )
 
-    trend_cmd = sub.add_parser("trend", help="Analyze pass-rate trend across historical run summaries")
+    trend_cmd = sub.add_parser(
+        "trend",
+        help="Analyze cross-run quality, latency, and cost trends across historical run summaries",
+    )
     trend_cmd.add_argument("--history", required=True, help="Directory containing historical run JSON")
     trend_cmd.add_argument("--window", type=int, default=10, help="Number of most recent runs to analyze")
     trend_cmd.add_argument("--output", help="Write trend report JSON to this path")
     trend_cmd.add_argument(
         "--fail-on-regression",
         action="store_true",
-        help="Exit non-zero when the trend direction is declining",
+        help="Exit non-zero when the pass-rate trend direction is declining",
+    )
+    trend_cmd.add_argument(
+        "--fail-on-latency-regression",
+        action="store_true",
+        help="Exit non-zero when the average latency trend direction is increasing",
+    )
+    trend_cmd.add_argument(
+        "--fail-on-p95-regression",
+        action="store_true",
+        help="Exit non-zero when the p95 latency trend direction is increasing",
+    )
+    trend_cmd.add_argument(
+        "--fail-on-cost-regression",
+        action="store_true",
+        help="Exit non-zero when the average cost trend direction is increasing",
+    )
+    trend_cmd.add_argument(
+        "--fail-on-any-regression",
+        action="store_true",
+        help="Exit non-zero when pass rate, average latency, p95 latency, or average cost regresses",
     )
 
     return parser
@@ -68,7 +91,19 @@ def main(argv: Optional[List[str]] = None) -> int:
         if args.output:
             Path(args.output).write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
-        if args.fail_on_regression and trend_report.any_regression:
+        if args.fail_on_regression and trend_report.pass_rate_regression:
+            return 1
+
+        if args.fail_on_latency_regression and trend_report.avg_latency_regression:
+            return 1
+
+        if args.fail_on_p95_regression and trend_report.p95_latency_regression:
+            return 1
+
+        if args.fail_on_cost_regression and trend_report.avg_cost_regression:
+            return 1
+
+        if args.fail_on_any_regression and trend_report.any_trend_regression:
             return 1
 
         return 0
