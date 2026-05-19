@@ -1,6 +1,7 @@
+import json
 from pathlib import Path
 
-from agent_release_gate.evaluator import evaluate
+from agent_release_gate.evaluator import evaluate, to_dict, to_markdown
 
 
 def test_evaluate_happy_path(tmp_path: Path):
@@ -402,3 +403,95 @@ cases:
     assert report.summary.gate_passed is False
     assert any("Latency regression limit is configured" in r for r in report.summary.gate_reasons)
     assert any("Cost regression limit is configured" in r for r in report.summary.gate_reasons)
+
+
+def test_evaluate_rolls_up_tag_summaries(tmp_path: Path):
+    spec = tmp_path / "spec.yaml"
+    spec.write_text(
+        "\n".join(
+            [
+                "global:",
+                "  minimum_pass_rate: 0.5",
+                "cases:",
+                "  - id: billing_refund",
+                '    expected_all: ["refund"]',
+                '    tags: ["billing", "support"]',
+                "  - id: billing_status",
+                '    expected_all: ["invoice"]',
+                '    tags: ["billing"]',
+                "  - id: safety_escalation",
+                '    expected_all: ["escalate"]',
+                '    tags: ["safety", "support"]',
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    results = tmp_path / "results.json"
+    results.write_text(
+        json.dumps(
+            {
+                "cases": [
+                    {"id": "billing_refund", "response": "refund approved"},
+                    {"id": "billing_status", "response": "status unknown"},
+                    {"id": "safety_escalation", "response": "please escalate this issue"},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    report = evaluate(spec, results)
+    tag_summaries = {item.tag: item for item in report.summary.tag_summaries}
+
+    assert report.cases[0].tags == ["billing", "support"]
+    assert tag_summaries["billing"].total_cases == 2
+    assert tag_summaries["billing"].passed_cases == 1
+    assert tag_summaries["billing"].failing_case_ids == ["billing_status"]
+    assert tag_summaries["support"].pass_rate == 1.0
+    assert tag_summaries["safety"].failing_case_ids == []
+
+
+def test_report_exports_include_tag_context(tmp_path: Path):
+    spec = tmp_path / "spec.yaml"
+    spec.write_text(
+        "\n".join(
+            [
+                "global:",
+                "  minimum_pass_rate: 0.5",
+                "cases:",
+                "  - id: onboarding_answer",
+                '    expected_all: ["setup"]',
+                '    tags: ["onboarding"]',
+                "  - id: onboarding_followup",
+                '    expected_all: ["next steps"]',
+                '    tags: ["onboarding", "support"]',
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    results = tmp_path / "results.json"
+    results.write_text(
+        json.dumps(
+            {
+                "cases": [
+                    {"id": "onboarding_answer", "response": "setup guide is here"},
+                    {"id": "onboarding_followup", "response": "no answer available"},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    report = evaluate(spec, results)
+    payload = to_dict(report)
+    markdown = to_markdown(report)
+
+    assert payload["summary"]["tag_summaries"][0]["tag"] == "onboarding"
+    assert payload["cases"][1]["tags"] == ["onboarding", "support"]
+    assert "## Tag summary" in markdown
+    assert "| onboarding | 50.00% | 1/2 | onboarding_followup |" in markdown
+    assert "- Tags: onboarding, support" in markdown

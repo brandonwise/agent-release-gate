@@ -13,6 +13,7 @@ from .models import (
     GateReport,
     GateSummary,
     ScoredCase,
+    TagSummary,
     parse_results,
     parse_spec,
 )
@@ -103,7 +104,44 @@ def score_case(case: GateCase, result: CaseResult) -> ScoredCase:
     if passed and not notes:
         notes.append("Looks good")
 
-    return ScoredCase(id=case.id, score=round(score, 4), passed=passed, notes=notes)
+    return ScoredCase(
+        id=case.id,
+        score=round(score, 4),
+        passed=passed,
+        notes=notes,
+        tags=list(case.tags),
+    )
+
+
+def build_tag_summaries(spec_cases: list[GateCase], scored_cases: list[ScoredCase]) -> list[TagSummary]:
+    scored_by_id = {case.id: case for case in scored_cases}
+    tag_buckets: dict[str, list[ScoredCase]] = {}
+
+    for spec_case in spec_cases:
+        scored_case = scored_by_id.get(spec_case.id)
+        if scored_case is None:
+            continue
+
+        for tag in dict.fromkeys(spec_case.tags):
+            tag_buckets.setdefault(tag, []).append(scored_case)
+
+    summaries: list[TagSummary] = []
+    for tag in sorted(tag_buckets):
+        cases = tag_buckets[tag]
+        total_cases = len(cases)
+        passed_cases = sum(1 for case in cases if case.passed)
+        failing_case_ids = [case.id for case in cases if not case.passed]
+        summaries.append(
+            TagSummary(
+                tag=tag,
+                total_cases=total_cases,
+                passed_cases=passed_cases,
+                pass_rate=round((passed_cases / total_cases) if total_cases else 0.0, 4),
+                failing_case_ids=failing_case_ids,
+            )
+        )
+
+    return summaries
 
 
 def evaluate(
@@ -125,6 +163,7 @@ def evaluate(
                     score=0.0,
                     passed=False,
                     notes=["Missing case result"],
+                    tags=list(case.tags),
                 )
             )
             continue
@@ -246,6 +285,8 @@ def evaluate(
     if gate_passed:
         reasons.append("Gate passed")
 
+    tag_summaries = build_tag_summaries(spec.cases, scored)
+
     summary = GateSummary(
         total_cases=total,
         passed_cases=passed,
@@ -255,6 +296,7 @@ def evaluate(
         gate_passed=gate_passed,
         gate_reasons=reasons,
         p95_latency_ms=round(p95_latency, 2) if p95_latency is not None else None,
+        tag_summaries=tag_summaries,
     )
 
     return GateReport(summary=summary, cases=scored)
@@ -271,9 +313,19 @@ def to_dict(report: GateReport) -> dict:
             "p95_latency_ms": report.summary.p95_latency_ms,
             "gate_passed": report.summary.gate_passed,
             "gate_reasons": report.summary.gate_reasons,
+            "tag_summaries": [
+                {
+                    "tag": tag.tag,
+                    "total_cases": tag.total_cases,
+                    "passed_cases": tag.passed_cases,
+                    "pass_rate": tag.pass_rate,
+                    "failing_case_ids": tag.failing_case_ids,
+                }
+                for tag in report.summary.tag_summaries
+            ],
         },
         "cases": [
-            {"id": c.id, "score": c.score, "passed": c.passed, "notes": c.notes}
+            {"id": c.id, "score": c.score, "passed": c.passed, "notes": c.notes, "tags": c.tags}
             for c in report.cases
         ],
     }
@@ -298,10 +350,28 @@ def to_markdown(report: GateReport) -> str:
     for reason in s.gate_reasons:
         lines.append(f"- {reason}")
 
+    if s.tag_summaries:
+        lines.extend(
+            [
+                "",
+                "## Tag summary",
+                "",
+                "| Tag | Pass rate | Passed / Total | Failing cases |",
+                "|---|---:|---:|---|",
+            ]
+        )
+        for tag in s.tag_summaries:
+            failing_cases = ", ".join(tag.failing_case_ids) if tag.failing_case_ids else "-"
+            lines.append(
+                f"| {tag.tag} | {tag.pass_rate:.2%} | {tag.passed_cases}/{tag.total_cases} | {failing_cases} |"
+            )
+
     lines.extend(["", "## Case details", ""])
     for c in report.cases:
         lines.append(f"### {c.id} {'✅' if c.passed else '❌'}")
         lines.append(f"- Score: {c.score:.2f}")
+        if c.tags:
+            lines.append(f"- Tags: {', '.join(c.tags)}")
         for note in c.notes:
             lines.append(f"- {note}")
         lines.append("")

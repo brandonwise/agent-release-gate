@@ -19,6 +19,7 @@ This tool makes those problems visible before release.
 - Scores each test case using expected + forbidden phrases
 - Calculates pass rate, average latency, p95 latency, and average cost
 - Fails if quality drops below your threshold
+- Groups results by optional case tags so failure clusters are obvious in JSON and Markdown reports
 - Optionally compares against a baseline report and blocks regressions
 - Optionally enforces baseline latency/cost drift caps so slower or pricier runs fail fast
 - Optionally enforces a global p95 latency limit to catch long-tail slow responses
@@ -100,6 +101,7 @@ global:
 
 cases:
   - id: refund_status
+    tags: ["billing", "support"]
     expected_all: ["refund", "3-5 business days"]
     expected_any: ["order", "transaction"]
     forbidden: ["cannot help", "policy not found"]
@@ -109,6 +111,8 @@ cases:
 ```
 
 `max_latency_ms` and `max_cost_usd` are optional per-case guardrails. If set, that case fails when telemetry is missing or exceeds the limit.
+
+`tags` is optional per case. Use it to group failures by workflow, surface area, or owner-adjacent bucket (for example `["onboarding", "activation"]`). Reports include a tag summary so PMs and engineers can see where regressions cluster instead of reading every case one by one.
 
 When `max_avg_latency_ms` or `max_avg_cost_usd` is configured globally, the gate also fails if the corresponding telemetry is missing across the run.
 

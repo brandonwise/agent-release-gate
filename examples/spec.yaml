@@ -9,6 +9,7 @@ global:
 
 cases:
   - id: refund_status
+    tags: ["billing", "support"]
     expected_all: ["refund", "3-5 business days"]
     expected_any: ["order", "transaction"]
     forbidden: ["cannot help", "policy not found"]
@@ -17,12 +18,14 @@ cases:
     max_cost_usd: 0.02
 
   - id: address_change
+    tags: ["account", "support"]
     expected_all: ["address", "update"]
     expected_any: ["shipping", "profile"]
     forbidden: ["not possible"]
     min_score: 0.7
 
   - id: cancel_order
+    tags: ["billing", "order-management"]
     expected_all: ["cancel", "order"]
     expected_any: ["window", "before shipment"]
     forbidden: ["no idea"]
