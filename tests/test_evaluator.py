@@ -453,6 +453,48 @@ def test_evaluate_rolls_up_tag_summaries(tmp_path: Path):
     assert tag_summaries["safety"].failing_case_ids == []
 
 
+def test_required_case_failure_blocks_release_even_when_pass_rate_passes(tmp_path: Path):
+    spec = tmp_path / "spec.yaml"
+    spec.write_text(
+        "\n".join(
+            [
+                "global:",
+                "  minimum_pass_rate: 0.5",
+                "cases:",
+                "  - id: checkout_receipt",
+                '    expected_all: ["receipt"]',
+                "    required: true",
+                "  - id: account_summary",
+                '    expected_all: ["summary"]',
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    results = tmp_path / "results.json"
+    results.write_text(
+        json.dumps(
+            {
+                "cases": [
+                    {"id": "checkout_receipt", "response": "order queued"},
+                    {"id": "account_summary", "response": "summary ready"},
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    report = evaluate(spec, results)
+
+    assert report.summary.pass_rate == 0.5
+    assert report.summary.gate_passed is False
+    assert report.summary.required_case_failures == ["checkout_receipt"]
+    assert any("Required cases failed: checkout_receipt" in r for r in report.summary.gate_reasons)
+    assert report.cases[0].required is True
+    assert report.cases[1].required is False
+
+
 def test_report_exports_include_tag_context(tmp_path: Path):
     spec = tmp_path / "spec.yaml"
     spec.write_text(
@@ -463,6 +505,7 @@ def test_report_exports_include_tag_context(tmp_path: Path):
                 "cases:",
                 "  - id: onboarding_answer",
                 '    expected_all: ["setup"]',
+                "    required: true",
                 '    tags: ["onboarding"]',
                 "  - id: onboarding_followup",
                 '    expected_all: ["next steps"]',
@@ -491,7 +534,10 @@ def test_report_exports_include_tag_context(tmp_path: Path):
     markdown = to_markdown(report)
 
     assert payload["summary"]["tag_summaries"][0]["tag"] == "onboarding"
+    assert payload["summary"]["required_case_failures"] == []
+    assert payload["cases"][0]["required"] is True
     assert payload["cases"][1]["tags"] == ["onboarding", "support"]
     assert "## Tag summary" in markdown
     assert "| onboarding | 50.00% | 1/2 | onboarding_followup |" in markdown
+    assert "- Required: yes" in markdown
     assert "- Tags: onboarding, support" in markdown

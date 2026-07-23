@@ -19,6 +19,7 @@ This tool makes those problems visible before release.
 - Scores each test case using expected + forbidden phrases
 - Calculates pass rate, average latency, p95 latency, and average cost
 - Fails if quality drops below your threshold
+- Lets you mark critical cases as required so a must-pass workflow can block release even when aggregate pass rate looks healthy
 - Groups results by optional case tags so failure clusters are obvious in JSON and Markdown reports
 - Optionally compares against a baseline report and blocks regressions
 - Optionally enforces baseline latency/cost drift caps so slower or pricier runs fail fast
@@ -102,6 +103,7 @@ global:
 cases:
   - id: refund_status
     tags: ["billing", "support"]
+    required: true
     expected_all: ["refund", "3-5 business days"]
     expected_any: ["order", "transaction"]
     forbidden: ["cannot help", "policy not found"]
@@ -109,6 +111,8 @@ cases:
     max_latency_ms: 1200
     max_cost_usd: 0.02
 ```
+
+`required` is optional per case. Set it to `true` for launch-blocking journeys, compliance checks, or executive-demo flows that cannot fail just because the aggregate pass rate still clears the bar.
 
 `max_latency_ms` and `max_cost_usd` are optional per-case guardrails. If set, that case fails when telemetry is missing or exceeds the limit.
 

@@ -11,6 +11,7 @@ class GateCase:
     expected_any: list[str] = field(default_factory=list)
     forbidden: list[str] = field(default_factory=list)
     tags: list[str] = field(default_factory=list)
+    required: bool = False
     min_score: float = 0.7
     max_latency_ms: Optional[int] = None
     max_cost_usd: Optional[float] = None
@@ -43,6 +44,7 @@ class ScoredCase:
     passed: bool
     notes: list[str]
     tags: list[str] = field(default_factory=list)
+    required: bool = False
 
 
 @dataclass
@@ -64,6 +66,7 @@ class GateSummary:
     gate_passed: bool
     gate_reasons: list[str]
     p95_latency_ms: Optional[float] = None
+    required_case_failures: list[str] = field(default_factory=list)
     tag_summaries: list[TagSummary] = field(default_factory=list)
 
 
@@ -91,6 +94,7 @@ def parse_spec(data: dict[str, Any]) -> GateSpec:
             expected_any=_as_list(c.get("expected_any")),
             forbidden=_as_list(c.get("forbidden")),
             tags=_as_list(c.get("tags")),
+            required=bool(c.get("required", False)),
             min_score=float(c.get("min_score", 0.7)),
             max_latency_ms=(
                 int(c["max_latency_ms"]) if c.get("max_latency_ms") is not None else None
