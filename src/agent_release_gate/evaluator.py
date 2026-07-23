@@ -110,6 +110,7 @@ def score_case(case: GateCase, result: CaseResult) -> ScoredCase:
         passed=passed,
         notes=notes,
         tags=list(case.tags),
+        required=case.required,
     )
 
 
@@ -164,6 +165,7 @@ def evaluate(
                     passed=False,
                     notes=["Missing case result"],
                     tags=list(case.tags),
+                    required=case.required,
                 )
             )
             continue
@@ -187,6 +189,11 @@ def evaluate(
         reasons.append(
             f"Pass rate {pass_rate:.2%} is below minimum {spec.minimum_pass_rate:.2%}"
         )
+
+    required_case_failures = [case.id for case in scored if case.required and not case.passed]
+    if required_case_failures:
+        gate_passed = False
+        reasons.append(f"Required cases failed: {', '.join(required_case_failures)}")
 
     if spec.max_avg_latency_ms is not None:
         if avg_latency is None:
@@ -296,6 +303,7 @@ def evaluate(
         gate_passed=gate_passed,
         gate_reasons=reasons,
         p95_latency_ms=round(p95_latency, 2) if p95_latency is not None else None,
+        required_case_failures=required_case_failures,
         tag_summaries=tag_summaries,
     )
 
@@ -313,6 +321,7 @@ def to_dict(report: GateReport) -> dict:
             "p95_latency_ms": report.summary.p95_latency_ms,
             "gate_passed": report.summary.gate_passed,
             "gate_reasons": report.summary.gate_reasons,
+            "required_case_failures": report.summary.required_case_failures,
             "tag_summaries": [
                 {
                     "tag": tag.tag,
@@ -325,7 +334,14 @@ def to_dict(report: GateReport) -> dict:
             ],
         },
         "cases": [
-            {"id": c.id, "score": c.score, "passed": c.passed, "notes": c.notes, "tags": c.tags}
+            {
+                "id": c.id,
+                "score": c.score,
+                "passed": c.passed,
+                "notes": c.notes,
+                "tags": c.tags,
+                "required": c.required,
+            }
             for c in report.cases
         ],
     }
@@ -370,6 +386,8 @@ def to_markdown(report: GateReport) -> str:
     for c in report.cases:
         lines.append(f"### {c.id} {'✅' if c.passed else '❌'}")
         lines.append(f"- Score: {c.score:.2f}")
+        if c.required:
+            lines.append("- Required: yes")
         if c.tags:
             lines.append(f"- Tags: {', '.join(c.tags)}")
         for note in c.notes:

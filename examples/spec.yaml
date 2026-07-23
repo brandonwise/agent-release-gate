@@ -10,6 +10,7 @@ global:
 cases:
   - id: refund_status
     tags: ["billing", "support"]
+    required: true
     expected_all: ["refund", "3-5 business days"]
     expected_any: ["order", "transaction"]
     forbidden: ["cannot help", "policy not found"]
